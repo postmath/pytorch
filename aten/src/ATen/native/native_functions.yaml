@@ -15166,6 +15166,13 @@
     CUDA, NestedTensorCUDA: native_multi_head_attention_cuda
   autogen: _native_multi_head_attention.out
 
+- func: tanh_attention(Tensor q, Tensor k, Tensor v) -> (Tensor, Tensor)
+  python_module: nn
+  variants: function
+  # These entries are implied:
+  #dispatch:
+  #  CompositeImplicitAutograd: tanh_attention
+
 - func: scaled_dot_product_attention(Tensor query, Tensor key, Tensor value, Tensor? attn_mask=None, float dropout_p=0.0, bool is_causal=False, *, float? scale=None, bool enable_gqa=False) -> Tensor
   python_module: nn
   variants: function

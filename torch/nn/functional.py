@@ -5944,6 +5944,7 @@ def _in_projection(
         )
     return linear(q, w_q, b_q), linear(k, w_k, b_k), linear(v, w_v, b_v)
 
+tanh_attention = torch._C._nn.tanh_attention
 
 scaled_dot_product_attention = _add_docstr(
     torch._C._nn.scaled_dot_product_attention,

@@ -9090,6 +9090,40 @@ def sample_inputs_scaled_mm_v2(op_info, device, dtype, requires_grad, **kwargs):
 
     yield from samples
 
+# copied/adapted from sample_inputs_scaled_dot_product_attention:    
+def sample_inputs_tanh_attention(op_info, device, dtype, requires_grad, **kwargs):
+    make = partial(make_tensor, device=device, dtype=dtype, requires_grad=requires_grad)
+    batch, seq_q, seq_kv, num_heads, head_dim = 4, 3, 6, 4, 8
+
+    dim_3_q_shape = (batch, seq_q, head_dim)
+    dim_3_kv_shape = (batch, seq_kv, head_dim)
+    dim_4_q_shape = (batch, num_heads, seq_q, head_dim)
+    dim_4_kv_shape = (batch, num_heads, seq_kv, head_dim)
+
+    broadcast_tuple = ((num_heads, seq_q, head_dim), (batch, num_heads, seq_kv, head_dim))
+
+    qkv_shapes = [(dim_3_q_shape, dim_3_kv_shape),
+                  (dim_4_q_shape, dim_4_kv_shape),
+                  broadcast_tuple,
+                  ]
+    samples = []
+    for qkv_shape in qkv_shapes:
+        shape_q, shape_kv = qkv_shape
+        samples.append(SampleInput(
+            make(shape_q),
+            make(shape_kv),
+            make(shape_kv),
+        ))
+
+    # Add non standard shapes
+    diff_v_head_dim = SampleInput(  # noqa: F841
+        make((batch, num_heads, seq_q, head_dim)),
+        make((batch, num_heads, seq_kv, head_dim)),
+        make((batch, num_heads, seq_kv, head_dim + 8)),
+    )
+
+    yield from samples
+
 def sample_inputs_scaled_dot_product_attention(op_info, device, dtype, requires_grad, **kwargs):
     make = partial(make_tensor, device=device, dtype=dtype, requires_grad=requires_grad)
     batch, seq_q, seq_kv, num_heads, head_dim = 4, 3, 6, 4, 8
@@ -17298,6 +17332,32 @@ op_db: list[OpInfo] = [
         decorators=[],
         skips=(
             DecorateInfo(unittest.expectedFailure, 'TestJit', 'test_variant_consistency_jit'),
+        ),
+    ),
+    OpInfo(
+        'nn.functional.tanh_attention',
+        ref=lambda q, k, v: torch.autograd.TanhAttention.apply(torch.tensor(q), torch.tensor(k), torch.tensor(v)),
+        sample_inputs_func=sample_inputs_tanh_attention,
+        dtypes=floating_and_complex_types_and(torch.float16, torch.bfloat16),
+        supports_out=False,
+        supports_forward_ad=True,
+        supports_fwgrad_bwgrad=True,
+        check_batched_forward_grad=False,
+        decorators=[
+            DecorateInfo(
+                toleranceOverride({torch.float32: tol(atol=5e-5, rtol=5e-6)}),
+                'TestCommon',
+            ),
+            DecorateInfo(
+                toleranceOverride({torch.float32: tol(atol=1e-4, rtol=1e-4)}),
+                'TestCommon',
+                'test_noncontiguous_samples',
+                device_type='cuda',
+            ),
+        ],
+        skips=(
+            # I think this is expected, but am not sure:
+            DecorateInfo(unittest.skip("Skipped!"), 'TestOpsUnbacked', 'test_unbacked_op_db', device_type='cpu'),
         ),
     ),
     OpInfo(

@@ -68,6 +68,8 @@
 #include <ATen/ops/softmax.h>
 #include <ATen/ops/split_native.h>
 #include <ATen/ops/split_with_sizes_native.h>
+#include <ATen/ops/tanh.h>
+#include <ATen/ops/transpose.h>
 #include <ATen/ops/where.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>
@@ -79,6 +81,13 @@
 #include <ATen/native/nested/NestedTensorTransformerFunctions.h>
 namespace at::native {
 
+std::tuple<Tensor, Tensor> tanh_attention(const Tensor& q, const Tensor& k, const Tensor& v) {
+    auto a = at::matmul(q, at::transpose(k, k.dim() - 2, k.dim() - 1));
+    at::tanh_(a);
+    auto o = at::matmul(a, v);
+    return std::make_tuple(std::move(o), std::move(a));
+}
+    
 DEFINE_DISPATCH(_fused_sdp_choice_stub);
 
 DEFINE_DISPATCH(transform_bias_rescale_qkv_stub);

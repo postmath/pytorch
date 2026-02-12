@@ -32,6 +32,7 @@ from .grad_mode import (
 from .gradcheck import gradcheck, gradgradcheck
 from .graph import _engine_run_backward
 from .variable import Variable
+from .tanh_attention import TanhAttention
 
 
 __all__ = [

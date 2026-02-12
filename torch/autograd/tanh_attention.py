@@ -7,6 +7,7 @@ from typing import Any
 
 class TanhAttention(Function):
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(q: Tensor, k: Tensor, v: Tensor) -> tuple[Tensor, Tensor]:
         """Following the onboarding packet definition. 
 Let:   q: M x N,                            
@@ -26,7 +27,8 @@ so let v: K x L,
         ctx.save_for_backward(*inputs, *outputs)
 
     @staticmethod
-    def backward(ctx: Any, o_grad: Tensor, a_grad: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+    # pyrefly: ignore [bad-override]
+    def backward(ctx: Any, o_grad: Tensor, a_grad: Tensor) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """ We have                 
 o_grad: M x L,          
 a_grad: M x K,          

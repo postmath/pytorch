@@ -16,7 +16,7 @@ Let:   q: M x N,
                a: M x K,                    
 so let v: K x L,                            
           then o: M x L."""
-        x = torch.matmul(q, k.transpose(0, 1))
+        x = torch.matmul(q, k.transpose(-1, -2))
         a = torch.tanh(x)
         o = torch.matmul(a, v)
 
@@ -39,13 +39,13 @@ and need v_grad: K x L,
         q, k, v, o, a = ctx.saved_tensors
 
         if v.requires_grad:
-            v_grad = torch.matmul(a.transpose(0, 1), o_grad)
+            v_grad = torch.matmul(a.transpose(-1, -2), o_grad)
         else:
             v_grad = None
          
         if q.requires_grad or k.requires_grad:
             # Track the "extra" dependency of a itself on o:
-            a_grad += torch.matmul(o_grad, v.transpose(0, 1))
+            a_grad += torch.matmul(o_grad, v.transpose(-1, -2))
             
             # The derivative of tanh(x) is 1 - tanh(x)^2, which is convenient because we already
             # know tanh(x) =: a. However, that's numerically unstable for abs(x) large. In that case
@@ -54,7 +54,7 @@ and need v_grad: K x L,
             if torch.max(torch.abs(a)) > 0.99:
                 # We could store x if we use the calling sequence where ctx is an argument of
                 # `forward` and `backward`.
-                x = torch.matmul(q, k.transpose(0, 1))
+                x = torch.matmul(q, k.transpose(-1, -2))
                 inv_cosh = 1 / torch.cosh(x)
                 tanh_derivatives = inv_cosh * inv_cosh
             else:
@@ -67,7 +67,7 @@ and need v_grad: K x L,
                 q_grad = None
          
             if k.requires_grad:
-                k_grad = torch.matmul(x_grad.transpose(0, 1), q)
+                k_grad = torch.matmul(x_grad.transpose(-1, -2), q)
             else:
                 k_grad = None
         else:

@@ -17356,8 +17356,9 @@ op_db: list[OpInfo] = [
             ),
         ],
         skips=(
-            # I think this is expected, but am not sure:
-            DecorateInfo(unittest.skip("Skipped!"), 'TestOpsUnbacked', 'test_unbacked_op_db', device_type='cpu'),
+            # Dynamo can't trace this C++ operator because there is no Python implementation to
+            # trace, nor a registered meta kernel for metadata inference.
+            DecorateInfo(unittest.expectedFailure, 'TestOpsUnbacked', 'test_unbacked_op_db', device_type='cpu'),
         ),
     ),
     OpInfo(

@@ -9,13 +9,13 @@ class TanhAttention(Function):
     @staticmethod
     # pyrefly: ignore [bad-override]
     def forward(q: Tensor, k: Tensor, v: Tensor) -> tuple[Tensor, Tensor]:
-        """Following the onboarding packet definition. 
-Let:   q: M x N,                            
-       k: K x N,                            
-          then x: M x K,                    
-               a: M x K,                    
-so let v: K x L,                            
-          then o: M x L."""
+        """Following the onboarding packet definition. In the absence of broadcasting,
+let:   q: B0 x B1 X ... X BP X M x N,
+       k: B0 x B1 X ... X BP X K x N,
+          then x: B0 x B1 X ... X BP X M x K,
+               a: B0 x B1 X ... X BP X M x K,
+so let v: B0 x B1 X ... X BP X K x L,
+          then o: B0 x B1 X ... X BP X M x L."""
         x = torch.matmul(q, k.transpose(-1, -2))
         a = torch.tanh(x)
         o = torch.matmul(a, v)
@@ -30,12 +30,12 @@ so let v: K x L,
     # pyrefly: ignore [bad-override]
     def backward(ctx: Any, o_grad: Tensor, a_grad: Tensor) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """ We have                 
-o_grad: M x L,          
-a_grad: M x K,          
-and need v_grad: K x L, 
-         x_grad: M x K, 
-         k_grad: K x N, 
-         q_grad: M x N."""
+o_grad: B0 x B1 X ... X BP X M x L,
+a_grad: B0 x B1 X ... X BP X M x K,
+and need v_grad: B0 x B1 X ... X BP X K x L,
+         x_grad: B0 x B1 X ... X BP X M x K,
+         k_grad: B0 x B1 X ... X BP X K x N,
+         q_grad: B0 x B1 X ... X BP X M x N."""
         q, k, v, o, a = ctx.saved_tensors
 
         if v.requires_grad:

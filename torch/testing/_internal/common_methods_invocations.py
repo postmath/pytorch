@@ -17362,6 +17362,37 @@ op_db: list[OpInfo] = [
         ),
     ),
     OpInfo(
+        'nn.functional.tanh_attention_explicit',
+        ref=lambda q, k, v: torch.autograd.TanhAttention.apply(torch.tensor(q), torch.tensor(k), torch.tensor(v)),
+        sample_inputs_func=sample_inputs_tanh_attention,
+        #dtypes=floating_and_complex_types_and(torch.float16, torch.bfloat16),
+        dtypes=floating_types_and(torch.float16, torch.bfloat16),
+        supports_out=False,
+        supports_forward_ad=False,
+        supports_fwgrad_bwgrad=False,
+        check_batched_forward_grad=False,
+        decorators=[
+            DecorateInfo(
+                toleranceOverride({torch.float32: tol(atol=5e-5, rtol=5e-6)}),
+                'TestCommon',
+            ),
+            DecorateInfo(
+                toleranceOverride({torch.float32: tol(atol=1e-4, rtol=1e-4)}),
+                'TestCommon',
+                'test_noncontiguous_samples',
+                device_type='cuda',
+            ),
+        ],
+        skips=(
+            # I understand the goal of autocast, but I'm not sure I understand how to make this work
+            # with autocast, nor if it would be worthwhile.
+            DecorateInfo(unittest.expectedFailure, 'TestFakeTensor', 'test_fake_autocast',
+                         dtypes=(torch.float32,), device_type='cuda'),
+            DecorateInfo(unittest.expectedFailure, 'TestFakeTensor', 'test_fake_autocast',
+                         dtypes=(torch.float32,), device_type='cpu'),
+        ),
+    ),
+    OpInfo(
         'nn.functional.scaled_dot_product_attention',
         op=lambda *args, **kwargs:
                wrapper_set_seed(torch.nn.functional.scaled_dot_product_attention, *args, **kwargs),

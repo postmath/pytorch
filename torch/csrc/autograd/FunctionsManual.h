@@ -809,6 +809,17 @@ Tensor as_strided_scatter_backward(
     c10::SymIntArrayRef sizes,
     c10::SymIntArrayRef strides,
     std::optional<c10::SymInt> storage_offset);
+Tensor tanh_attention_explicit_backward_v(
+    const Tensor &o_grad,
+    const Tensor &a);
+std::tuple<Tensor, Tensor> tanh_attention_explicit_backward_qk(
+    const Tensor &o_grad,
+    const Tensor &a_grad,
+    const Tensor &q,
+    const Tensor &k,
+    const Tensor &v,
+    const Tensor &a,
+    std::array<bool, 2> output_mask);
 std::tuple<Tensor, Tensor> atan2_backward(
     const Tensor& grad,
     const Tensor& self,

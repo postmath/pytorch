@@ -15173,6 +15173,12 @@
   #dispatch:
   #  CompositeImplicitAutograd: tanh_attention
 
+- func: tanh_attention_explicit(Tensor q, Tensor k, Tensor v) -> (Tensor, Tensor)
+  python_module: nn
+  variants: function
+  dispatch:
+    CompositeExplicitAutograd: tanh_attention_explicit
+
 - func: scaled_dot_product_attention(Tensor query, Tensor key, Tensor value, Tensor? attn_mask=None, float dropout_p=0.0, bool is_causal=False, *, float? scale=None, bool enable_gqa=False) -> Tensor
   python_module: nn
   variants: function

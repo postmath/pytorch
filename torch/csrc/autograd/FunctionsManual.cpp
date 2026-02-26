@@ -3323,6 +3323,59 @@ Tensor as_strided_scatter_backward(
   return result;
 }
 
+Tensor tanh_attention_explicit_backward_v(
+    const Tensor &o_grad,
+    const Tensor &a) {
+
+    if (! o_grad.defined()) {
+        return Tensor();
+    }
+        
+    return at::matmul(a.transpose(-1, -2), o_grad);
+}
+std::tuple<Tensor, Tensor> tanh_attention_explicit_backward_qk(
+    const Tensor &o_grad,
+    const Tensor &a_grad,
+    const Tensor &q,
+    const Tensor &k,
+    const Tensor &v,
+    const Tensor &a,
+    std::array<bool, 2> output_mask) {
+
+    if ((! a_grad.defined()) && (! o_grad.defined()) ) {
+        return std::make_tuple(Tensor(), Tensor());
+    }
+
+    Tensor x_grad;
+    if (o_grad.defined()) {
+        x_grad = at::matmul(o_grad, v.transpose(-1, -2));
+        if (a_grad.defined()) {
+            // For composite compliance, we can't do "x_grad += a_grad", because sometimes x_grad is
+            // a regular Tensor and a_grad is a Subclass.
+            x_grad = x_grad + a_grad;
+        }
+    }
+    else {
+        x_grad = a_grad;
+    }
+
+    // The derivative of tanh(x) is 1 - tanh(x)^2, which is convenient because we already know
+    // tanh(x) =: a. However, that's numerically unstable for abs(x) large. We can rewrite it as
+    // 1/cosh(x)^2.
+
+    auto tanh_derivatives = at::matmul(q, k.transpose(-1, -2));
+    tanh_derivatives.cosh_();
+    tanh_derivatives.pow_(-2);
+
+    // For composite compliance, we can't do "x_grad.mul_(tanh_derivatives)", because sometimes
+    // x_grad is a regular Tensor and tanh_derivatives is a Subclass.
+    x_grad = x_grad.mul(tanh_derivatives);
+
+    return std::make_tuple(
+        output_mask[0] ? at::matmul(x_grad, k).sum_to_size(q.sizes()) : Tensor(),
+        output_mask[1] ? at::matmul(x_grad.transpose(-1, -2), q).sum_to_size(k.sizes()) : Tensor());
+}
+
 std::tuple<Tensor, Tensor> atan2_backward(
     const Tensor& grad,
     const Tensor& self,

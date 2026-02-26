@@ -2890,6 +2890,10 @@
   self: _softmax_backward_data(grad, result, dim, self.scalar_type())
   result: result * (self_t - safe_logsumexp_jvp(self_p, self_t, {dim}, true))
 
+- name: tanh_attention_explicit(Tensor q, Tensor k, Tensor v) -> (Tensor, Tensor)
+  v: tanh_attention_explicit_backward_v(grads[0], result1)
+  q, k: tanh_attention_explicit_backward_qk(grads[0], grads[1], q, k, v, result1, grad_input_mask)
+
 - name: _scaled_dot_product_efficient_attention(Tensor query, Tensor key, Tensor value, Tensor? attn_bias, bool compute_log_sumexp, float dropout_p=0.0, bool is_causal=False, *, float? scale=None) -> (Tensor output, Tensor log_sumexp, Tensor philox_seed, Tensor philox_offset)
   output_differentiability: [True, False, False, False]
   query, key, value, attn_bias: _scaled_dot_product_efficient_attention_backward(grad, query, key, value, attn_bias, output, log_sumexp, philox_seed, philox_offset, dropout_p, grad_input_mask, is_causal, scale)

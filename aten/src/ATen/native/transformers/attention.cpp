@@ -87,7 +87,11 @@ std::tuple<Tensor, Tensor> tanh_attention(const Tensor& q, const Tensor& k, cons
     auto o = at::matmul(a, v);
     return std::make_tuple(std::move(o), std::move(a));
 }
-    
+
+std::tuple<Tensor, Tensor> tanh_attention_explicit(const Tensor& q, const Tensor& k, const Tensor& v) {
+    return at::native::tanh_attention(q, k, v);
+}
+
 DEFINE_DISPATCH(_fused_sdp_choice_stub);
 
 DEFINE_DISPATCH(transform_bias_rescale_qkv_stub);

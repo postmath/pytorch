@@ -479,21 +479,26 @@ class UserDefinedClassVariable(UserDefinedVariable):
             )
             and name == "fromkeys"
         ):
-            # Figure out if self.value has overridden fromkeys.
-            overridden_fromkeys = False
-            for klass in type(self.value).__mro__:
+            for klass in self.value.__mro__:
                 if klass in (dict, collections.OrderedDict, collections.defaultdict):
                     break
                 elif "fromkeys" in klass.__dict__:
-                    overridden_fromkeys = True
-                    break
+                    # In classes that override fromkeys, we don't actually usually get here - the
+                    # LOAD_ATTR for fromkeys will return a UserMethodVariable rather than a
+                    # GetAttrVariable, and the call to call_method on UserMethodVariable will
+                    # handle the call instead of reaching here.
+                    unimplemented(
+                        gb_type="Unsupported fromkeys override in dict subclass",
+                        context=str(self.value),
+                        explanation="Dynamo does not support calling fromkeys on dictionary subclasses that override it",
+                        hints=[
+                            "Do not override fromkeys in dictionary subclasses that you want to use with Dynamo"
+                        ],
+                    )
 
-            if overridden_fromkeys:
-                return super().call_method(tx, name, args, kwargs)
-            else:
-                return variables.BuiltinVariable.call_custom_dict_fromkeys(
-                    tx, self.value, *args, **kwargs
-                )
+            return variables.BuiltinVariable.call_custom_dict_fromkeys(
+                tx, self.value, *args, **kwargs
+            )
         elif self.value is collections.OrderedDict and name == "move_to_end":
             return args[0].call_method(tx, name, [*args[1:]], kwargs)
         elif name == "__eq__" and len(args) == 1 and hasattr(args[0], "value"):

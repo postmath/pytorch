@@ -2115,9 +2115,12 @@ class DictSubclassOverload(torch._dynamo.test_case.TestCase):
         def pop(self, item, default=None, /):
             return default
 
-    thetype = DictSubclass
+    class DictSubSubclass(DictSubclass):
+        pass
 
-    @unittest.expectedFailure
+    thetype = DictSubSubclass
+
+    # @unittest.expectedFailure
     @make_dynamo_test
     def test_overload_fromkeys(self):
         p = self.thetype.fromkeys("a")
@@ -2154,6 +2157,43 @@ class DictSubclassOverloadWithoutFromKeys(DictSubclassOverload):
         p = self.thetype.fromkeys("a")
         self.assertIsInstance(p, self.thetype)
         self.assertEqual(list(p.keys()), list("a"))
+
+
+class DictSubclassWithFromKeys(dict):
+    @classmethod
+    def fromkeys(cls, _iterable, _value=None, /):
+        input = dict.fromkeys(_iterable, _value)
+        with torch._dynamo.error_on_graph_break(False):
+            d = cls(input)
+        d["called"] = True
+        return d
+
+    def get(self, key, default=None, /):
+        return default
+
+    def pop(self, item, default=None, /):
+        return default
+
+
+class DictSubSubclassWithFromKeys(DictSubclassWithFromKeys):
+    pass
+
+
+class DictSubclassWithFromKeysMethodsTests(DictMethodsTests):
+    thetype = DictSubSubclassWithFromKeys
+
+    @make_dynamo_test
+    def test_fromkeys(self):
+        d = self.thetype.fromkeys(["a", "b"], 1)
+        self.assertIsInstance(d, self.thetype)
+        self.assertEqual(d, {"a": 1, "b": 1, "called": True})
+        p = self.thetype.fromkeys(["a", "b"], None)
+        self.assertEqual(p, {"a": None, "b": None, "called": True})
+
+        # Test dict.fromkeys with default value
+        d2 = self.thetype.fromkeys(["c", "d"], 2)
+        self.assertIsInstance(d2, self.thetype)
+        self.assertEqual(d2, {"c": 2, "d": 2, "called": True})
 
 
 class OrderedDictMethodsTests(DictMethodsTests):

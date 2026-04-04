@@ -2222,27 +2222,57 @@ class BuiltinVariable(VariableTracker):
             )
 
         arg, value = args
-        DictVariableType = (
-            ConstDictVariable
-            if not issubclass(user_cls, defaultdict)
-            else DefaultDictVariable
-        )
+        if issubclass(user_cls, defaultdict):
+            if user_cls is not defaultdict:
+                unimplemented(
+                    gb_type="Cannot call fromkeys on defaultdict subclass",
+                    context=f"{user_cls.__name__}.fromkeys(): {args} {kwargs}",
+                    explanation=f"Failed to call {user_cls.__name__}.fromkeys() because it is a "
+                    f"subclass of defaultdict. Dynamo does not currently support calling "
+                    f"fromkeys on defaultdict subclasses.",
+                    hints=[
+                        "Use defaultdict directly instead of subclassing it if you want to use fromkeys().",
+                        *graph_break_hints.SUPPORTABLE,
+                    ],
+                )
 
-        if isinstance(arg, dict):
-            arg_list = [VariableTracker.build(tx, k) for k in arg]
-            return DictVariableType(
-                dict.fromkeys(arg_list, value),
-                user_cls,
-                mutation_type=ValueMutationNew(),
-            )
-        elif arg.has_force_unpack_var_sequence(tx):
-            keys = arg.force_unpack_var_sequence(tx)
-            if all(is_hashable(v) for v in keys):
-                return DictVariableType(
-                    dict.fromkeys(keys, value),
+            def make_dict(
+                arg: dict[Any, Any] | list[VariableTracker],
+            ) -> VariableTracker:
+                return DefaultDictVariable(
+                    dict.fromkeys(arg, value),
                     user_cls,
                     mutation_type=ValueMutationNew(),
                 )
+        elif user_cls is dict or user_cls is OrderedDict:
+
+            def make_dict(
+                arg: dict[Any, Any] | list[VariableTracker],
+            ) -> VariableTracker:
+                return ConstDictVariable(
+                    dict.fromkeys(arg, value),
+                    user_cls,
+                    mutation_type=ValueMutationNew(),
+                )
+        else:
+
+            def make_dict(
+                arg: dict[Any, Any] | list[VariableTracker],
+            ) -> VariableTracker:
+                result = user_cls.fromkeys(arg, value)
+                return UserDefinedDictVariable(
+                    result,
+                    None,
+                    mutation_type=ValueMutationNew(),
+                )
+
+        if isinstance(arg, dict):
+            arg_list = [VariableTracker.build(tx, k) for k in arg]
+            return make_dict(arg_list)
+        elif arg.has_force_unpack_var_sequence(tx):
+            keys = arg.force_unpack_var_sequence(tx)
+            if all(is_hashable(v) for v in keys):
+                return make_dict(keys)
 
         unimplemented(
             gb_type="failed to call dict.fromkeys()",
